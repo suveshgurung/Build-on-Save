@@ -1,29 +1,28 @@
+/* Date : September 30, 2024
+* Author : Suvesh Gurung
+*/
+
+
 #include "bos.h"
 #include <pthread.h>
+#include <unistd.h>
 
 /* global variables */
 
-pid_t processPid;
+pid_t processid;
 
 /* function definitions */
 
-void BOS_Init(char *fileName) {
-    char line[LEN];
-    char buf[32];
+void BOS_Init() {
+    #ifdef _WIN32
+        processid = GetCurrentProcessId();
+    #elif __unix__
+        processid = getpid(); 
+    #endif
 
-    // get the process ID of the running file.
-    snprintf(buf, sizeof(buf), "pidof ./%s", fileName);
-    FILE *cmd = popen(buf, "r");
-
-    fgets(line, LEN, cmd);
-    pid_t pid = strtoul(line, NULL, 10);
-
-    processPid = pid;
-    printf("%d\n", processPid);
+    printf("Current Process ID : %d\n", processid);
 
     BOS_Create_Thread();
-
-    pclose(cmd);
 }
 
 void BOS_Create_Thread() {

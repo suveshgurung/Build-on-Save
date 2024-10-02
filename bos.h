@@ -27,6 +27,7 @@
 /* global variables */
 
 extern time_t oldmTime;     // last modified time of the file.
+extern char *sourceFilePath;
 #ifdef _WIN32
 extern DWORD processid;
 #elif __unix__
@@ -38,3 +39,4 @@ extern pid_t processid;
 void BOS_Init(char *);
 void BOS_Create_Thread();
 void *BOS_Check_Is_File_Saved(void *);
+void BOS_End();

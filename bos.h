@@ -36,5 +36,5 @@ extern pid_t processid;
 
 void BOS_Init(char *);
 void BOS_Create_Thread();
-void *BOS_Check_Is_File_Saved(void *);
+void *BOS_Check_Is_File_Saved();
 void BOS_End();

@@ -40,12 +40,15 @@ void BOS_Init(char *sourceFileName) {
 
     do {
         if ((temp = getcwd(filePath, filePathSize)) == NULL) {
-            if (errno == ERANGE) {
+            if (errno == ERANGE) {      // Check if the buffer size is not enough.
                 filePathSize++;
                 filePath = (char *)realloc(filePath, filePathSize);
             } else {
-                perror(" [BOS_Init] getcwd");
-                exit(errno);
+                perror("[BOS_Init] getcwd, cannot get file path");
+                free(filePath);
+                return;
+                /* TODO : See if we have to exit from here */
+                // exit(errno);
             }
         }
     } while ((errno == ERANGE) && (temp == NULL));
@@ -58,13 +61,13 @@ void BOS_Init(char *sourceFileName) {
     // printf("%s\n", sourceFilePath);
 
     if (stat(sourceFilePath, &fileStat) == -1) {
-        perror(" [BOS_Init] stat");
+        perror("[BOS_Init] stat");
+        free(filePath);
         BOS_End();
-        exit(errno);
+        return;
+        // exit(errno);
     }
     oldmTime = fileStat.st_mtim.tv_sec;
-
-    // printf("%ld\n", oldmTime);
 
     free(filePath);
     BOS_Create_Thread();
@@ -74,20 +77,20 @@ void BOS_Create_Thread() {
     pthread_t bosThread; 
 
     if (pthread_create(&bosThread, NULL, BOS_Check_Is_File_Saved, NULL)) {
-        perror(" [BOS_Create_Thread] pthread_create");
+        perror("[BOS_Create_Thread] pthread_create");
         BOS_End();
-        exit(errno);
+        return;
+        // exit(errno);
     }
 }
 
-void *BOS_Check_Is_File_Saved(void *arg) {
+void *BOS_Check_Is_File_Saved() {
     struct stat fileStat;
     time_t currmTime;
 
     while (1) {
         if (stat(sourceFilePath, &fileStat) == -1) {
-            if (errno == ENOENT) {
-                // File temporarily not available (probably being modified).
+            if (errno == ENOENT) {      // File temporarily not available (probably being modified).
                 // sleep for 5 microseconds.
                 #ifdef _WIN32
                 Sleep(5 / 1000);
@@ -96,9 +99,10 @@ void *BOS_Check_Is_File_Saved(void *arg) {
                 #endif
                 continue;
             } else {
-                perror(" [BOS_Check_Is_File_Saved] stat");
+                perror("[BOS_Check_Is_File_Saved] stat");
                 BOS_End();
-                exit(errno);
+                return NULL;
+                // exit(errno);
             }
         }
         currmTime = fileStat.st_mtim.tv_sec;

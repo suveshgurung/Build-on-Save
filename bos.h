@@ -11,9 +11,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <errno.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-// #include <fcntl.h>
 #ifdef _WIN32
 #include <windows.h>
 #elif __unix__

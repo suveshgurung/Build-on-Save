@@ -4,7 +4,6 @@
 
 
 #include "bos.h"
-#include <stdio.h>
 
 /* global variables */
 
@@ -33,23 +32,39 @@ void BOS_Init(char *sourceFileName) {
     TCHAR filePathBuf[FILE_PATH_LEN];
     GetModuleFileName(NULL, filePathBuf, FILE_PATH_LEN);
     #elif __unix__
-    char filePath[FILE_PATH_LEN] = {'\0'};
-    if (getcwd(filePath, sizeof(filePath)) == NULL) {
-        perror(" [BOS_Init] getcwd");
-        exit(errno);
-    }
+    int filePathSize = 5;       // initially assume a size of 5.
+    char *filePath = (char *)malloc(filePathSize);
+    char *temp;
+
+    do {
+        if ((temp = getcwd(filePath, filePathSize)) == NULL) {
+            if (errno == ERANGE) {
+                filePathSize++;
+                filePath = (char *)realloc(filePath, filePathSize);
+            } else {
+                perror(" [BOS_Init] getcwd");
+                exit(errno);
+            }
+        }
+    } while ((errno == ERANGE) && (temp == NULL));
     #endif
 
-    char sourceFilePath[FILE_PATH_LEN] = {'\0'};
-    snprintf(sourceFilePath, FILE_PATH_LEN, "%s/%s", filePath, sourceFileName);
+    int sourceFilePathSize = filePathSize + strlen(sourceFileName) + 2;     // +2 for '/' and '\0'
+    char *sourceFilePath = (char *)malloc(sourceFilePathSize);
+    snprintf(sourceFilePath, sourceFilePathSize, "%s/%s", filePath, sourceFileName);
+
     printf("%s\n", sourceFilePath);
-    // TODO : See how to get the path of the file.
+
     if (stat(sourceFilePath, &fileStat) == -1) {
         perror(" [BOS_Init] stat");
         exit(errno);
     }
     oldmTime = fileStat.st_mtim.tv_sec;
 
+    printf("%ld\n", oldmTime);
+
+    free(sourceFilePath);
+    free(filePath);
     BOS_Create_Thread();
 }
 

@@ -46,6 +46,7 @@ void BOS_Init(char *sourceFileName) {
             } else {
                 perror("[BOS_Init] getcwd, cannot get file path");
                 free(filePath);
+                fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
                 return;
                 /* TODO : See if we have to exit from here */
                 // exit(errno);
@@ -64,6 +65,7 @@ void BOS_Init(char *sourceFileName) {
         perror("[BOS_Init] stat");
         free(filePath);
         BOS_End();
+        fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
         return;
         // exit(errno);
     }
@@ -79,6 +81,7 @@ void BOS_Create_Thread() {
     if (pthread_create(&bosThread, NULL, BOS_Check_Is_File_Saved, NULL)) {
         perror("[BOS_Create_Thread] pthread_create");
         BOS_End();
+        fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
         return;
         // exit(errno);
     }
@@ -101,6 +104,7 @@ void *BOS_Check_Is_File_Saved() {
             } else {
                 perror("[BOS_Check_Is_File_Saved] stat");
                 BOS_End();
+                fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
                 return NULL;
                 // exit(errno);
             }

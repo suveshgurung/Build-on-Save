@@ -4,11 +4,16 @@
 
 
 #include "bos.h"
+#include <time.h>
+#include <unistd.h>
 
 /* global variables */
 
 time_t oldmTime;     // last modified time of the file.
 char *sourceFilePath = NULL;
+char *sourceFileName = NULL;
+char *filePath = NULL;
+int filePathSize;
 #ifdef _WIN32
 DWORD processid;
 #elif __unix__
@@ -17,7 +22,7 @@ pid_t processid;
 
 /* function definitions */
 
-void BOS_Init(char *sourceFileName) {
+void BOS_Init(char *fileName) {
     // Get the process ID.
     #ifdef _WIN32
     processid = GetCurrentProcessId();
@@ -34,8 +39,8 @@ void BOS_Init(char *sourceFileName) {
     TCHAR filePathBuf[FILE_PATH_LEN];
     GetModuleFileName(NULL, filePathBuf, FILE_PATH_LEN);
     #elif __unix__
-    int filePathSize = 5;       // initially assume a size of 5.
-    char *filePath = (char *)malloc(filePathSize);
+    filePathSize = 5;       // initially assume a size of 5.
+    filePath = (char *)malloc(filePathSize);
     char *temp;
 
     do {
@@ -55,11 +60,14 @@ void BOS_Init(char *sourceFileName) {
     } while ((errno == ERANGE) && (temp == NULL));
     #endif
 
+     
+    // set the global variable holding source file name.
+    sourceFileName = (char *)realloc(sourceFileName, sizeof(fileName));
+    strcpy(sourceFileName, fileName);
+
     int sourceFilePathSize = filePathSize + strlen(sourceFileName) + 2;     // +2 for '/' and '\0'
     sourceFilePath = (char *)realloc(sourceFilePath, sourceFilePathSize);
     snprintf(sourceFilePath, sourceFilePathSize, "%s/%s", filePath, sourceFileName);
-
-    // printf("%s\n", sourceFilePath);
 
     if (stat(sourceFilePath, &fileStat) == -1) {
         perror("[BOS_Init] stat");
@@ -69,9 +77,8 @@ void BOS_Init(char *sourceFileName) {
         return;
         // exit(errno);
     }
-    oldmTime = fileStat.st_mtim.tv_sec;
+    oldmTime = fileStat.st_mtime;
 
-    free(filePath);
     BOS_Create_Thread();
 }
 
@@ -98,7 +105,10 @@ void *BOS_Check_Is_File_Saved() {
                 #ifdef _WIN32
                 Sleep(5 / 1000);
                 #elif __unix__
-                usleep(5 * 1000);
+                struct timespec ts;
+                ts.tv_sec = 0;
+                ts.tv_nsec = 5 * 1000 * 1000;
+                nanosleep(&ts, NULL);
                 #endif
                 continue;
             } else {
@@ -109,11 +119,23 @@ void *BOS_Check_Is_File_Saved() {
                 // exit(errno);
             }
         }
-        currmTime = fileStat.st_mtim.tv_sec;
+        currmTime = fileStat.st_mtime;
 
         if (currmTime > oldmTime) {
             oldmTime = currmTime;
-            printf("File is modified\n");
+
+            char makeFilePath[filePathSize + 9];        // +9 for "Makefile" and '\0'
+            snprintf(makeFilePath, filePathSize + 9, "%s/Makefile", filePath);
+
+            if (access(makeFilePath, F_OK) == 0) {
+                // use make to build.
+                system("make");
+            } else {
+                // normally build
+                system("gcc -Wall -Wextra -pedantic -o test bos.c test.c");
+            }
+
+            // kill(processid, SIGKILL);
         }
     }
 
@@ -122,4 +144,6 @@ void *BOS_Check_Is_File_Saved() {
 
 void BOS_End() {
     free(sourceFilePath);
+    free(sourceFileName);
+    free(filePath);
 }

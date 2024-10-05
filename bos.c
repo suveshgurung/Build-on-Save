@@ -4,8 +4,6 @@
 
 
 #include "bos.h"
-#include <time.h>
-#include <unistd.h>
 
 /* global variables */
 
@@ -132,7 +130,16 @@ void *BOS_Check_Is_File_Saved() {
                 system("make");
             } else {
                 // normally build
-                system("gcc -Wall -Wextra -pedantic -o test bos.c test.c");
+                int fileLen = strlen(sourceFileName);
+                char command[38 + fileLen + fileLen - 2];
+                char fileNameWithoutExtension[fileLen - 2];
+
+                strcpy(fileNameWithoutExtension, sourceFileName);
+
+                trimString(fileNameWithoutExtension, fileLen - 2, 2);
+                snprintf(command, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, sourceFileName);
+
+                system(command);
             }
 
             // kill(processid, SIGKILL);
@@ -146,4 +153,14 @@ void BOS_End() {
     free(sourceFilePath);
     free(sourceFileName);
     free(filePath);
+}
+
+void trimString(char *str, int begin, int len) {
+    int strLen = strlen(str);
+
+    if (begin + len > strLen) {
+        len = strLen - begin;
+    }
+
+    memmove(str + begin, str + begin + len, len);
 }

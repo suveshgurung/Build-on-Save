@@ -27,6 +27,7 @@
 
 /* global variables */
 
+/* TODO : change these into a structure if possible */
 extern time_t oldmTime;     // last modified time of the file.
 extern char *sourceFilePath;
 extern char *sourceFileName;

@@ -4,6 +4,7 @@
 
 
 #include "bos.h"
+#include <stdio.h>
 
 /* global variables */
 
@@ -28,7 +29,7 @@ void BOS_Init(char *fileName) {
     processid = getpid(); 
     #endif
 
-    // printf("Current Process ID : %d\n", processid);
+    printf("Current Process ID : %d\n", processid);
 
     // Get the last modified date of the file.
     struct stat fileStat;
@@ -119,29 +120,33 @@ void *BOS_Check_Is_File_Saved() {
         }
         currmTime = fileStat.st_mtime;
 
+        /* TODO : think about a solution if one choses the executable name to be different in makefile than the file name. */
         if (currmTime > oldmTime) {
             oldmTime = currmTime;
 
             char makeFilePath[filePathSize + 9];        // +9 for "Makefile" and '\0'
-            snprintf(makeFilePath, filePathSize + 9, "%s/Makefile", filePath);
+            int fileLen = strlen(sourceFileName);
+            char buildCommand[38 + fileLen + fileLen - 2];
+            char runCommand[fileLen + 1];
+            char fileNameWithoutExtension[fileLen - 2];
 
+            snprintf(makeFilePath, filePathSize + 9, "%s/Makefile", filePath);
+            strcpy(fileNameWithoutExtension, sourceFileName);
+            trimString(fileNameWithoutExtension, fileLen - 2, 2);
+            snprintf(runCommand, fileLen + 1, "./%s", fileNameWithoutExtension);
+
+            /* TODO : how to stop the previous process properly */
             if (access(makeFilePath, F_OK) == 0) {
                 // use make to build.
                 system("make");
+                system(runCommand);
             } else {
                 // normally build
-                int fileLen = strlen(sourceFileName);
-                char command[38 + fileLen + fileLen - 2];
-                char fileNameWithoutExtension[fileLen - 2];
+                snprintf(buildCommand, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, sourceFileName);
 
-                strcpy(fileNameWithoutExtension, sourceFileName);
-
-                trimString(fileNameWithoutExtension, fileLen - 2, 2);
-                snprintf(command, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, sourceFileName);
-
-                system(command);
+                system(buildCommand);
+                system(runCommand);
             }
-
             // kill(processid, SIGKILL);
         }
     }

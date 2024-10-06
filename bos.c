@@ -4,7 +4,6 @@
 
 
 #include "bos.h"
-#include <stdio.h>
 
 /* global variables */
 
@@ -28,8 +27,6 @@ void BOS_Init(char *fileName) {
     #elif __unix__
     processid = getpid(); 
     #endif
-
-    printf("Current Process ID : %d\n", processid);
 
     // Get the last modified date of the file.
     struct stat fileStat;
@@ -98,6 +95,7 @@ void *BOS_Check_Is_File_Saved() {
     time_t currmTime;
 
     while (1) {
+        // Check if the file is modified.
         if (stat(sourceFilePath, &fileStat) == -1) {
             if (errno == ENOENT) {      // File temporarily not available (probably being modified).
                 // sleep for 5 microseconds.
@@ -139,15 +137,37 @@ void *BOS_Check_Is_File_Saved() {
             if (access(makeFilePath, F_OK) == 0) {
                 // use make to build.
                 system("make");
-                system(runCommand);
             } else {
                 // normally build
                 snprintf(buildCommand, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, sourceFileName);
 
                 system(buildCommand);
-                system(runCommand);
             }
-            // kill(processid, SIGKILL);
+
+            // Create a child process.
+            pid_t childPid = fork();
+
+            if (childPid == 0) {
+                // Child Process.
+                char *argv[] = {runCommand, NULL};
+
+                // Arguments for new program.
+                execvp(argv[0], argv);
+
+                // execvp() returns only if error occurs.
+                perror("[BOS_Check_Is_File_Saved] execvp");
+                BOS_End();
+                fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
+
+                return NULL;
+            } else if (childPid > 0) {
+                // Parent Process.
+                BOS_End();
+                kill(processid, SIGKILL);
+            } else {
+                perror("[BOS_Check_Is_File_Saved] fork");
+                return NULL;
+            }
         }
     }
 

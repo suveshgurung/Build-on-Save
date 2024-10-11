@@ -5,16 +5,21 @@
 
 #pragma once
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <signal.h>
+#include <sys/ioctl.h>
+#include <sys/ptrace.h>
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>

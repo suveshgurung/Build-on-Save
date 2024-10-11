@@ -2,6 +2,7 @@
 * Author : Suvesh Gurung
 */
 
+/* TODO : See how to kill the new process. */
 
 #include "bos.h"
 
@@ -27,6 +28,8 @@ void BOS_Init(char *fileName) {
     #elif __unix__
     processid = getpid(); 
     #endif
+
+    printf("Process ID : %d, Group ID : %d, Session ID : %d\n", processid, getpgrp(), getsid(processid));
 
     // Get the last modified date of the file.
     struct stat fileStat;
@@ -82,7 +85,7 @@ void BOS_Create_Thread() {
     pthread_t bosThread; 
 
     if (pthread_create(&bosThread, NULL, BOS_Check_Is_File_Saved, NULL)) {
-        perror("[BOS_Create_Thread] pthread_create");
+        perror("[BOS_Create_Thread] pthread_create bosThread");
         BOS_End();
         fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
         return;
@@ -149,9 +152,14 @@ void *BOS_Check_Is_File_Saved() {
 
             if (childPid == 0) {
                 // Child Process.
-                char *argv[] = {runCommand, NULL};
+                // set child process as the new session leader.
+                if (setsid() == -1) {
+                    perror("[BOS_Check_Is_File_Saved] setsid");
+                    return NULL;
+                }
 
                 // Arguments for new program.
+                char *argv[] = {runCommand, NULL};
                 execvp(argv[0], argv);
 
                 // execvp() returns only if error occurs.
@@ -163,7 +171,7 @@ void *BOS_Check_Is_File_Saved() {
             } else if (childPid > 0) {
                 // Parent Process.
                 BOS_End();
-                kill(processid, SIGKILL);
+                exit(EXIT_SUCCESS);
             } else {
                 perror("[BOS_Check_Is_File_Saved] fork");
                 return NULL;

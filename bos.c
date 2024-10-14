@@ -158,6 +158,21 @@ void *BOS_Check_Is_File_Saved() {
                     return NULL;
                 }
 
+                int fd = open("/dev/pts/3", O_RDWR);
+                if (fd == -1) {
+                    perror("open");
+                    return NULL;
+                }
+
+                if (ioctl(fd, TIOCSCTTY, 1) == -1) {
+                    perror("ioctl");
+                    return NULL;
+                }
+
+                dup2(fd, STDIN_FILENO);
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+
                 // Arguments for new program.
                 char *argv[] = {runCommand, NULL};
                 execvp(argv[0], argv);

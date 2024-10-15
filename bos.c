@@ -8,11 +8,7 @@
 
 /* global variables */
 
-time_t oldmTime;     // last modified time of the file.
-char *sourceFilePath = NULL;
-char *sourceFileName = NULL;
-char *filePath = NULL;
-int filePathSize;
+fileDetails fileDetail;
 #ifdef _WIN32
 DWORD processid;
 #elif __unix__
@@ -22,6 +18,11 @@ pid_t processid;
 /* function definitions */
 
 void BOS_Init(char *fileName) {
+    // Initialize the fileDetails structure.
+    fileDetail.sourceFilePath = NULL;
+    fileDetail.sourceFileName = NULL;
+    fileDetail.filePath = NULL;
+
     // Get the process ID.
     #ifdef _WIN32
     processid = GetCurrentProcessId();
@@ -38,18 +39,18 @@ void BOS_Init(char *fileName) {
     TCHAR filePathBuf[FILE_PATH_LEN];
     GetModuleFileName(NULL, filePathBuf, FILE_PATH_LEN);
     #elif __unix__
-    filePathSize = 5;       // initially assume a size of 5.
-    filePath = (char *)malloc(filePathSize);
+    fileDetail.filePathSize = 5;       // initially assume a size of 5.
+    fileDetail.filePath = (char *)malloc(fileDetail.filePathSize);
     char *temp;
 
     do {
-        if ((temp = getcwd(filePath, filePathSize)) == NULL) {
+        if ((temp = getcwd(fileDetail.filePath, fileDetail.filePathSize)) == NULL) {
             if (errno == ERANGE) {      // Check if the buffer size is not enough.
-                filePathSize++;
-                filePath = (char *)realloc(filePath, filePathSize);
+                fileDetail.filePathSize++;
+                fileDetail.filePath = (char *)realloc(fileDetail.filePath, fileDetail.filePathSize);
             } else {
                 perror("[BOS_Init] getcwd, cannot get file path");
-                free(filePath);
+                free(fileDetail.filePath);
                 fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
                 return;
                 /* TODO : See if we have to exit from here */
@@ -61,22 +62,22 @@ void BOS_Init(char *fileName) {
 
      
     // set the global variable holding source file name.
-    sourceFileName = (char *)realloc(sourceFileName, sizeof(fileName));
-    strcpy(sourceFileName, fileName);
+    fileDetail.sourceFileName = (char *)realloc(fileDetail.sourceFileName, sizeof(fileName));
+    strcpy(fileDetail.sourceFileName, fileName);
 
-    int sourceFilePathSize = filePathSize + strlen(sourceFileName) + 2;     // +2 for '/' and '\0'
-    sourceFilePath = (char *)realloc(sourceFilePath, sourceFilePathSize);
-    snprintf(sourceFilePath, sourceFilePathSize, "%s/%s", filePath, sourceFileName);
+    int sourceFilePathSize = fileDetail.filePathSize + strlen(fileDetail.sourceFileName) + 2;     // +2 for '/' and '\0'
+    fileDetail.sourceFilePath = (char *)realloc(fileDetail.sourceFilePath, sourceFilePathSize);
+    snprintf(fileDetail.sourceFilePath, sourceFilePathSize, "%s/%s", fileDetail.filePath, fileDetail.sourceFileName);
 
-    if (stat(sourceFilePath, &fileStat) == -1) {
+    if (stat(fileDetail.sourceFilePath, &fileStat) == -1) {
         perror("[BOS_Init] stat");
-        free(filePath);
+        free(fileDetail.filePath);
         BOS_End();
         fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
         return;
         // exit(errno);
     }
-    oldmTime = fileStat.st_mtime;
+    fileDetail.oldmTime = fileStat.st_mtime;
 
     BOS_Create_Thread();
 }
@@ -99,7 +100,7 @@ void *BOS_Check_Is_File_Saved() {
 
     while (1) {
         // Check if the file is modified.
-        if (stat(sourceFilePath, &fileStat) == -1) {
+        if (stat(fileDetail.sourceFilePath, &fileStat) == -1) {
             if (errno == ENOENT) {      // File temporarily not available (probably being modified).
                 // sleep for 5 microseconds.
                 #ifdef _WIN32
@@ -122,17 +123,17 @@ void *BOS_Check_Is_File_Saved() {
         currmTime = fileStat.st_mtime;
 
         /* TODO : think about a solution if one choses the executable name to be different in makefile than the file name. */
-        if (currmTime > oldmTime) {
-            oldmTime = currmTime;
+        if (currmTime > fileDetail.oldmTime) {
+            fileDetail.oldmTime = currmTime;
 
-            char makeFilePath[filePathSize + 9];        // +9 for "Makefile" and '\0'
-            int fileLen = strlen(sourceFileName);
+            char makeFilePath[fileDetail.filePathSize + 9];        // +9 for "Makefile" and '\0'
+            int fileLen = strlen(fileDetail.sourceFileName);
             char buildCommand[38 + fileLen + fileLen - 2];
             char runCommand[fileLen + 1];
             char fileNameWithoutExtension[fileLen - 2];
 
-            snprintf(makeFilePath, filePathSize + 9, "%s/Makefile", filePath);
-            strcpy(fileNameWithoutExtension, sourceFileName);
+            snprintf(makeFilePath, fileDetail.filePathSize + 9, "%s/Makefile", fileDetail.filePath);
+            strcpy(fileNameWithoutExtension, fileDetail.sourceFileName);
             trimString(fileNameWithoutExtension, fileLen - 2, 2);
             snprintf(runCommand, fileLen + 1, "./%s", fileNameWithoutExtension);
 
@@ -142,7 +143,7 @@ void *BOS_Check_Is_File_Saved() {
                 system("make");
             } else {
                 // normally build
-                snprintf(buildCommand, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, sourceFileName);
+                snprintf(buildCommand, 38 + 2 * fileLen - 1, "gcc -Wall -Wextra -pedantic -o %s %s bos.c", fileNameWithoutExtension, fileDetail.sourceFileName);
 
                 system(buildCommand);
             }
@@ -158,14 +159,14 @@ void *BOS_Check_Is_File_Saved() {
                     return NULL;
                 }
 
-                int fd = open("/dev/pts/3", O_RDWR);
+                int fd = open("/dev/pts/1", O_RDWR);
                 if (fd == -1) {
-                    perror("open");
+                    perror("[BOS_Check_Is_File_Saved] open");
                     return NULL;
                 }
 
                 if (ioctl(fd, TIOCSCTTY, 1) == -1) {
-                    perror("ioctl");
+                    perror("[BOS_Check_Is_File_Saved] ioctl");
                     return NULL;
                 }
 
@@ -198,9 +199,9 @@ void *BOS_Check_Is_File_Saved() {
 }
 
 void BOS_End() {
-    free(sourceFilePath);
-    free(sourceFileName);
-    free(filePath);
+    free(fileDetail.sourceFilePath);
+    free(fileDetail.sourceFileName);
+    free(fileDetail.filePath);
 }
 
 void trimString(char *str, int begin, int len) {

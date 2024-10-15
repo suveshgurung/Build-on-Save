@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
-#include <sys/ptrace.h>
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
@@ -33,12 +32,13 @@
 
 /* global variables */
 
-/* TODO : change these into a structure if possible */
-extern time_t oldmTime;     // last modified time of the file.
-extern char *sourceFilePath;
-extern char *sourceFileName;
-extern char *filePath;
-extern int filePathSize;
+typedef struct {
+    time_t oldmTime;     // last modified time of the file.
+    char *sourceFilePath;
+    char *sourceFileName;
+    char *filePath;
+    int filePathSize;
+} fileDetails;
 #ifdef _WIN32
 extern DWORD processid;
 #define F_OK 0

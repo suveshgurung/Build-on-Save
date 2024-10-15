@@ -79,14 +79,14 @@ void BOS_Init(char *fileName) {
     }
     fileDetail.oldmTime = fileStat.st_mtime;
 
-    BOS_Create_Thread();
+    BOS_Create_Thread(&BOS_Check_Is_File_Saved);
 }
 
-void BOS_Create_Thread() {
+void BOS_Create_Thread(void *(*function)(void *)) {
     pthread_t bosThread; 
 
-    if (pthread_create(&bosThread, NULL, BOS_Check_Is_File_Saved, NULL)) {
-        perror("[BOS_Create_Thread] pthread_create bosThread");
+    if (pthread_create(&bosThread, NULL, function, NULL)) {
+        perror("[BOS_Create_Thread] pthread_create");
         BOS_End();
         fprintf(stderr, "BOS is not tracking further changes. Exiting BOS...\n") ;
         return;
@@ -173,6 +173,7 @@ void *BOS_Check_Is_File_Saved() {
                 dup2(fd, STDIN_FILENO);
                 dup2(fd, STDOUT_FILENO);
                 dup2(fd, STDERR_FILENO);
+                close(fd);
 
                 // Arguments for new program.
                 char *argv[] = {runCommand, NULL};

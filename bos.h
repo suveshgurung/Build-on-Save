@@ -50,7 +50,7 @@ extern pid_t processid;
 /* function declarations */
 
 void BOS_Init(char *);
-void BOS_Create_Thread();
+void BOS_Create_Thread(void *(*function)(void *));
 void *BOS_Check_Is_File_Saved();
 void BOS_End();
 void trimString(char *str, int begin, int len);
